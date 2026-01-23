@@ -17,6 +17,7 @@ def ping_ip(ip: str) -> dict:
         response = ping(ip, count=10, interval=0.2, timeout=10, privileged=False)
         geo_data = ip_to_geo([ip])
         distance = geo_data.get(ip, {}).get('distance_km')
+        location = geo_data.get(ip, {}).get('location')
         return {
             'ip': ip,
             'min_rtt': response.min_rtt,
@@ -24,6 +25,7 @@ def ping_ip(ip: str) -> dict:
             'avg_rtt': response.avg_rtt,
             'packet_loss': response.packet_loss,
             'geo_distance_km': distance,
+            'location': location,
             'error': None
         }
     except Exception as e:
@@ -35,6 +37,7 @@ def ping_ip(ip: str) -> dict:
             'avg_rtt': None,
             'packet_loss': None,
             'geo_distance_km': None,
+            'location': None,
             'error': str(e)
         }
     
