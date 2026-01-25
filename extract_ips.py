@@ -1,15 +1,35 @@
 #!/usr/bin/env python3
 """
-Script to extract IP addresses/hosts from listed_iperf3_servers.csv
+Script to extract IP addresses/hosts from iperf3serverlist.net
 and convert them to a Python list and pandas DataFrame.
+Fetches the latest data from the website each time it runs.
 """
 
 import pandas as pd
+import requests
+from io import StringIO
 
 
-def load_servers_dataframe(csv_file: str) -> pd.DataFrame:
-    """Load CSV file into a pandas DataFrame."""
-    df = pd.read_csv(csv_file)
+def load_servers_dataframe(url: str = None) -> pd.DataFrame:
+    """
+    Load CSV data from URL into a pandas DataFrame.
+    
+    Args:
+        url: URL to fetch CSV from. Defaults to iperf3serverlist.net export URL.
+    
+    Returns:
+        DataFrame with server information
+    """
+    if url is None:
+        url = 'https://export.iperf3serverlist.net/listed_iperf3_servers.csv'
+    
+    # Fetch CSV data from URL
+    response = requests.get(url)
+    response.raise_for_status()  # Raise exception for bad status codes
+    
+    # Parse CSV from response text
+    df = pd.read_csv(StringIO(response.text))
+    
     # Remove any rows with empty IP/HOST
     df = df[df['IP/HOST'].notna() & (df['IP/HOST'].str.strip() != '')]
     return df
@@ -21,16 +41,16 @@ def extract_ips_list(df: pd.DataFrame) -> list[str]:
 
 
 def main():
-    csv_file = 'listed_iperf3_servers.csv'
+    print("Fetching latest iperf3 server list from iperf3serverlist.net...")
     
-    # Load into pandas DataFrame
-    df = load_servers_dataframe(csv_file)
+    # Load into pandas DataFrame from URL
+    df = load_servers_dataframe()
     
     # Extract IPs as a list
     ips = extract_ips_list(df)
     
     # Print as a Python list
-    print("# List of iperf3 server IPs/hosts")
+    print("\n# List of iperf3 server IPs/hosts")
     print(f"IPERF3_SERVERS = {ips}")
     print(f"\n# Total servers: {len(ips)}")
     
