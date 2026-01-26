@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to extract IP addresses/hosts from iperf3serverlist.net
+Script to extract addresses/hosts from iperf3serverlist.net
 and convert them to a Python list and pandas DataFrame.
 Fetches the latest data from the website each time it runs.
 """
@@ -35,7 +35,7 @@ def load_servers_dataframe(url: str = None) -> pd.DataFrame:
     return df
 
 
-def extract_ips_list(df: pd.DataFrame) -> list[str]:
+def extract_addrs_list(df: pd.DataFrame) -> list[str]:
     """Extract IP/HOST column as a Python list."""
     return df['IP/HOST'].tolist()
 
@@ -47,12 +47,12 @@ def main():
     df = load_servers_dataframe()
     
     # Extract IPs as a list
-    ips = extract_ips_list(df)
+    addrs = extract_addrs_list(df)
     
     # Print as a Python list
     print("\n# List of iperf3 server IPs/hosts")
-    print(f"IPERF3_SERVERS = {ips}")
-    print(f"\n# Total servers: {len(ips)}")
+    print(f"IPERF3_SERVERS = {addrs}")
+    print(f"\n# Total servers: {len(addrs)}")
     
     # Show DataFrame info
     print("\n# DataFrame Preview:")

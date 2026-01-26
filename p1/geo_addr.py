@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to map IP addresses to their geographical locations using a GeoIP database.
+Script to map IP/hostnames addresses to their geographical locations using a GeoIP database.
 Provides distance between West Lafayette, IN and the IP locations, in km
 
 You need to "pip install requests"
@@ -16,8 +16,8 @@ import time
 # Example element
 # IP 103.146.200.98: {'country': 'Papua New Guinea', 'regionName': 'National Capital', 'city': 'Port Moresby', 'lat': -9.43529, 3 # 'lon': 147.18, 'my_lat': 40.4444, 'my_lon': -86.9256, 'my_city': 'West Lafayette', 'my_region': 'Indiana', 'my_country': 'United # States', 'distance_km': 13691.116359279862}
 # 
-def ip_to_geo(ips):
-    print("Mapping IP to geo location...")
+def get_geo(addrs):
+    print("Mapping Addr to geo location...")
 
     # Haversine formula to calculate distance between two lat/lon points in km
     # https://en.wikipedia.org/wiki/Haversine_formula
@@ -44,14 +44,14 @@ def ip_to_geo(ips):
         return distance
 
     # Request ip info from ip-api.com, it sleeps 1.5 sec to avoid rate limitation, it returns json data
-    def request_api_info(ip):
-        url = f'http://ip-api.com/json/{ip}'
+    def request_api_info(addr):
+        url = f'http://ip-api.com/json/{addr}'
         try:
             response = requests.get(url)
             data = response.json()
             return data
         except Exception as e:
-            print(f"Error fetching data for IP {ip}: {e}")
+            print(f"Error fetching data for Addr {addr}: {e}")
             return None
         finally:
             # Avoid limitation rate
@@ -64,23 +64,23 @@ def ip_to_geo(ips):
             response.raise_for_status()
             return response.text
         except requests.RequestException as e:
-            print(f"Failed to get public IP: {e}")
+            print(f"Failed to get public Addr: {e}")
             return None
     
-    # Get ip using our function
-    my_ip = get_my_public_ip()
-    if my_ip is None:
-        print("We need a valid public IP to calculate distance.")
+    # Get addr using our function
+    my_addr = get_my_public_ip()
+    if my_addr is None:
+        print("We need a valid public Addr to calculate distance.")
         return None
-    # Get geo info for our public IP
-    my_geo = request_api_info(my_ip)
+    # Get geo info for our public Addr
+    my_geo = request_api_info(my_addr)
     
     if my_geo is None or my_geo['status'] != 'success':
-        print("We need geo info for our public IP.")
+        print("We need geo info for our public Addr.")
         return None
     
     if 'lat' not in my_geo or 'lon' not in my_geo:
-        print("We need coordinates for our public IP.")
+        print("We need coordinates for our public Addr.")
         return None
     
     my_lat = my_geo['lat']
@@ -90,56 +90,38 @@ def ip_to_geo(ips):
     my_country = my_geo.get('country', 'USA')
     print(f"Our location: {my_city}, {my_region}, {my_country} ({my_lat}, {my_lon})")
 
-    # Start processing IPs
+    # Start processing Addrs
     print("##############")
-    print("Processing IPs...")
+    print("Processing Addrs...")
 
-    # Dictionary to hold IP to geo info mapping [ip -> {geo info}]
-    # ip should be unique
+    # Dictionary to hold Addr to geo info mapping [addr -> {geo info}]
+    # addr should be unique
     map = defaultdict(dict)
 
     # Populate the map
-    for ip in ips:
-        if ip is None: continue
-        data = request_api_info(ip)
+    for addr in addrs:
+        if addr is None: continue
+        data = request_api_info(addr)
         if data and data['status'] == 'success':
-            if ip in map: continue  # Skip if already processed
-            map[ip]['country'] = data.get('country', 'N/A')
-            map[ip]['regionName'] = data.get('regionName', 'N/A')
-            map[ip]['city'] = data.get('city', 'N/A')
-            map[ip]['lat'] = data.get('lat', 'N/A')
-            map[ip]['lon'] = data.get('lon', 'N/A')
+            if addr in map: continue  # Skip if already processed
+            map[addr]['country'] = data.get('country', 'N/A')
+            map[addr]['regionName'] = data.get('regionName', 'N/A')
+            map[addr]['city'] = data.get('city', 'N/A')
+            map[addr]['lat'] = data.get('lat', 'N/A')
+            map[addr]['lon'] = data.get('lon', 'N/A')
 
-            # Get distance from West Lafayette, IN to IP location
-            map[ip]['my_lat'] = my_lat
-            map[ip]['my_lon'] = my_lon
-            map[ip]['my_city'] = my_city
-            map[ip]['my_region'] = my_region
-            map[ip]['my_country'] = my_country
-            distance = get_distance_km(my_lat, my_lon, map[ip]['lat'], map[ip]['lon'])
-            map[ip]['distance_km'] = distance
-            print(f"IP {ip}: {map[ip]}")
+            # Get distance from West Lafayette, IN to Addr location
+            map[addr]['my_lat'] = my_lat
+            map[addr]['my_lon'] = my_lon
+            map[addr]['my_city'] = my_city
+            map[addr]['my_region'] = my_region
+            map[addr]['my_country'] = my_country
+            distance = get_distance_km(my_lat, my_lon, map[addr]['lat'], map[addr]['lon'])
+            map[addr]['distance_km'] = distance
+            print(f"Addr {addr}: {map[addr]}")
         else:
-            print(f"Failed to get data for IP {ip}: {data.get('message', 'error')}")
+            print(f"Failed to get data for Addr {addr}: {data.get('message', 'error')}")
             return None
-    print("##############")
-    print("Total IPs processed:", len(map))
+    print("##############") 
+    print("Total Addrs processed:", len(map))
     return map
-
-
-
-
-def main():
-    # Getting ip from extract_ips.py
-    from extract_ips import extract_ips_list, load_servers_dataframe
-    csv_file = 'listed_iperf3_servers.csv'
-    ips = extract_ips_list(load_servers_dataframe(csv_file))
-
-    # Map IPs to geo locations, call this function to get all info
-    ip_to_geo(ips)
-
-
-
-
-if __name__ == '__main__':
-    main()
