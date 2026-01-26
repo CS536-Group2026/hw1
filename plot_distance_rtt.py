@@ -20,15 +20,23 @@ def plot_distance_vs_rtt(csv_file: str = 'ping_results.csv', output_file: str = 
     df = pd.read_csv(csv_file)
     
     # Filter out rows with missing data (errors, None values)
+    # Also filter out RTT values <= 0 or very small (< 1 ms) which likely indicate blocked/failed pings
     df_clean = df[
         df['geo_distance_km'].notna() & 
         df['avg_rtt'].notna() & 
-        (df['error'].isna() | (df['error'] == ''))
+        (df['error'].isna() | (df['error'] == '')) &
+        (df['avg_rtt'] > 1.0)  # Filter out RTT <= 1 ms (likely blocked/failed pings)
     ].copy()
     
     if len(df_clean) == 0:
         print("No valid data points found for plotting.")
         return
+    
+    # Count how many points were filtered out
+    total_valid = len(df[df['geo_distance_km'].notna() & df['avg_rtt'].notna() & (df['error'].isna() | (df['error'] == ''))])
+    filtered_out = total_valid - len(df_clean)
+    if filtered_out > 0:
+        print(f"Filtered out {filtered_out} data point(s) with RTT <= 1 ms (likely blocked/failed pings)")
     
     print(f"Plotting {len(df_clean)} data points...")
     
