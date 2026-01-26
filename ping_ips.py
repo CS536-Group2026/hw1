@@ -7,19 +7,27 @@ import pandas as pd
 from icmplib import ping
 from extract_ips import extract_ips_list, load_servers_dataframe
 from geo_ips import ip_to_geo
-import ipaddress
 
-def ping_ip(ip: str) -> dict:
-    """Ping an IP address/host and return round-trip time statistics."""
+def ping_ip(ip_or_hostname: str) -> dict:
+    """Ping an IP address/hostname and return round-trip time statistics."""
     
     try:
-        ipaddress.ip_address(ip)
-        response = ping(ip, count=10, interval=0.2, timeout=10, privileged=False)
-        geo_data = ip_to_geo([ip])
-        distance = geo_data.get(ip, {}).get('distance_km')
-        location = geo_data.get(ip, {}).get('location')
+        # Ping handles both IP addresses and hostnames
+        response = ping(ip_or_hostname, count=10, interval=0.2, timeout=10, privileged=False)
+        
+        # Try to get geolocation (ip_to_geo may need IP address, so handle errors gracefully)
+        distance = None
+        location = None
+        try:
+            geo_data = ip_to_geo([ip_or_hostname])
+            distance = geo_data.get(ip_or_hostname, {}).get('distance_km')
+            location = geo_data.get(ip_or_hostname, {}).get('location')
+        except Exception as geo_error:
+            # If geolocation fails (e.g., hostname not resolved), continue without it
+            pass
+        
         return {
-            'ip': ip,
+            'ip': ip_or_hostname,
             'min_rtt': response.min_rtt,
             'max_rtt': response.max_rtt,
             'avg_rtt': response.avg_rtt,
@@ -31,7 +39,7 @@ def ping_ip(ip: str) -> dict:
     except Exception as e:
         # Handle nonresponsive servers or other errors
         return {
-            'ip': ip,
+            'ip': ip_or_hostname,
             'min_rtt': None,
             'max_rtt': None,
             'avg_rtt': None,
