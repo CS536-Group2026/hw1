@@ -3,6 +3,7 @@
 Script to ping IP addresses/hosts from Python list
 and report min, max, and average round-trip times.
 """
+from numpy import long
 import pandas as pd
 from icmplib import ping
 from extract_addrs import extract_addrs_list, load_servers_dataframe
@@ -25,8 +26,10 @@ def ping_addr(addr_or_hostname: str) -> dict:
             # handle error 
             if geo_data:
                 distance = geo_data.get(addr_or_hostname, {}).get('distance_km')
+                longitude = geo_data.get(addr_or_hostname, {}).get('longitude')
+                latitude = geo_data.get(addr_or_hostname, {}).get('latitude')
                 location = geo_data.get(addr_or_hostname, {}).get('location')
-                if distance is None or location is None or distance == 'N/A' or location == 'N/A':
+                if distance is None or location is None or longitude is None or latitude is None or distance == 'N/A' or location == 'N/A' or longitude == 'N/A' or latitude == 'N/A':
                     raise Exception("Geolocation data incomplete")
             else:
                 raise Exception("Geolocation data not found")
@@ -42,6 +45,8 @@ def ping_addr(addr_or_hostname: str) -> dict:
             'avg_rtt': response.avg_rtt,
             'packet_loss': response.packet_loss,
             'geo_distance_km': distance,
+            'longitude': longitude,
+            'latitude': latitude,
             'location': location,
             'error': None
         }
@@ -54,6 +59,8 @@ def ping_addr(addr_or_hostname: str) -> dict:
             'avg_rtt': None,
             'packet_loss': None,
             'geo_distance_km': None,
+            'longitude': None,
+            'latitude': None,
             'location': None,
             'error': str(e)
         }
@@ -83,7 +90,7 @@ def main():
         else:
             print(f"Addr {result['addr']} - Min RTT: {result['min_rtt']} ms, Max RTT: {result['max_rtt']} ms, "
                   f"Avg RTT: {result['avg_rtt']} ms, Packet Loss: {result['packet_loss']}%, "
-                  f"Geo Distance: {result['geo_distance_km']} km")
+                  f"Geo Distance: {result['geo_distance_km']} km, Longitude: {result['longitude']}, Latitude: {result['latitude']}, Location: {result['location']}")
 
     # Convert results to DataFrame for better visualization if needed
     results_df = pd.DataFrame(results)
