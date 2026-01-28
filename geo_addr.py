@@ -44,11 +44,13 @@ def get_geo(addrs):
         return distance
 
     # Request ip info from ip-api.com, it sleeps 1.5 sec to avoid rate limitation, it returns json data
-    def request_api_info(addr):
+    def request_api_info(addr): 
         url = f'http://ip-api.com/json/{addr}'
         try:
             response = requests.get(url)
             data = response.json()
+            # handle HTTP errors
+            response.raise_for_status()
             return data
         except Exception as e:
             print(f"Error fetching data for Addr {addr}: {e}")
@@ -96,32 +98,34 @@ def get_geo(addrs):
 
     # Dictionary to hold Addr to geo info mapping [addr -> {geo info}]
     # addr should be unique
-    map = defaultdict(dict)
+    addr_geo_map = defaultdict(dict)
 
     # Populate the map
     for addr in addrs:
         if addr is None: continue
         data = request_api_info(addr)
         if data and data['status'] == 'success':
-            if addr in map: continue  # Skip if already processed
-            map[addr]['country'] = data.get('country', 'N/A')
-            map[addr]['regionName'] = data.get('regionName', 'N/A')
-            map[addr]['city'] = data.get('city', 'N/A')
-            map[addr]['lat'] = data.get('lat', 'N/A')
-            map[addr]['lon'] = data.get('lon', 'N/A')
-
+            if addr in addr_geo_map: continue  # Skip if already processed
+            addr_geo_map[addr]['country'] = data.get('country', 'N/A')
+            addr_geo_map[addr]['regionName'] = data.get('regionName', 'N/A')
+            addr_geo_map[addr]['city'] = data.get('city', 'N/A')
+            addr_geo_map[addr]['lat'] = data.get('lat', 'N/A')
+            addr_geo_map[addr]['lon'] = data.get('lon', 'N/A')
+            if addr_geo_map[addr]['lat'] == 'N/A' or addr_geo_map[addr]['lon'] == 'N/A':
+                print(f"Addr {addr} has no valid lat/lon data.")
+                continue
             # Get distance from West Lafayette, IN to Addr location
-            map[addr]['my_lat'] = my_lat
-            map[addr]['my_lon'] = my_lon
-            map[addr]['my_city'] = my_city
-            map[addr]['my_region'] = my_region
-            map[addr]['my_country'] = my_country
-            distance = get_distance_km(my_lat, my_lon, map[addr]['lat'], map[addr]['lon'])
-            map[addr]['distance_km'] = distance
-            print(f"Addr {addr}: {map[addr]}")
+            addr_geo_map[addr]['my_lat'] = my_lat
+            addr_geo_map[addr]['my_lon'] = my_lon
+            addr_geo_map[addr]['my_city'] = my_city
+            addr_geo_map[addr]['my_region'] = my_region
+            addr_geo_map[addr]['my_country'] = my_country
+            distance = get_distance_km(my_lat, my_lon, addr_geo_map[addr]['lat'], addr_geo_map[addr]['lon'])
+            addr_geo_map[addr]['distance_km'] = distance
+            print(f"Addr {addr}: {addr_geo_map[addr]}")
         else:
             print(f"Failed to get data for Addr {addr}: {data.get('message', 'error')}")
-            return None
+            pass
     print("##############") 
-    print("Total Addrs processed:", len(map))
-    return map
+    print("Total Addrs processed:", len(addr_geo_map))
+    return addr_geo_map
