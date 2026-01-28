@@ -75,14 +75,14 @@ def run_ping(ip: str, count: int = 3) -> Optional[Dict[str, float]]:
         return None
 
 
-def run_traceroute(ip: str, max_hops: int = 30, timeout: int = 1) -> str:
+def run_traceroute(ip: str, max_hops: int = 30, timeout: int = 2) -> str:
     """
     Run traceroute command for the given IP address.
     
     Args:
         ip: Destination IP address
         max_hops: Maximum number of hops to trace
-        timeout: Timeout in milliseconds for each hop
+        timeout: Timeout in seconds for each hop
     
     Returns:
         Raw traceroute output as string
@@ -91,11 +91,11 @@ def run_traceroute(ip: str, max_hops: int = 30, timeout: int = 1) -> str:
     
     try:
         if system == 'windows':
-            # Windows tracert command
-            cmd = ['tracert', '-h', str(max_hops), '-w', str(timeout), ip]
+            # Windows tracert command (timeout in milliseconds)
+            cmd = ['tracert', '-h', str(max_hops), '-w', str(timeout * 1000), ip]
         else:
-            # Unix/Linux traceroute command
-            cmd = ['traceroute', '-m', str(max_hops), '-w', str(timeout // 1000), ip]
+            # Unix/Linux traceroute command (timeout in seconds)
+            cmd = ['traceroute', '-m', str(max_hops), '-w', str(timeout), ip]
         
         print(f"Running traceroute to {ip}...")
         result = subprocess.run(
