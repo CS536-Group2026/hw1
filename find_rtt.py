@@ -29,10 +29,7 @@ def run_ping(ip: str, count: int = 3) -> Optional[Dict[str, float]]:
     system = platform.system().lower()
     
     try:
-        if system == 'windows':
-            cmd = ['ping', '-n', str(count), ip]
-        else:
-            cmd = ['ping', '-c', str(count), ip]
+        cmd = ['ping', '-c', str(count), ip]
         
         print(f"Pinging {ip} to get final hop RTT...")
         result = subprocess.run(
@@ -48,14 +45,10 @@ def run_ping(ip: str, count: int = 3) -> Optional[Dict[str, float]]:
         
         # Parse ping output to extract RTT values
         rtts = []
-        if system == 'windows':
-            # Windows ping format: "Reply from ... time=XXms"
-            rtt_matches = re.findall(r'time[=<](\d+)ms', result.stdout, re.IGNORECASE)
-            rtts = [float(r) for r in rtt_matches]
-        else:
-            # Unix ping format: "time=XX.XX ms"
-            rtt_matches = re.findall(r'time=([\d\.]+)\s*ms', result.stdout, re.IGNORECASE)
-            rtts = [float(r) for r in rtt_matches]
+
+        # Unix ping format: "time=XX.XX ms"
+        rtt_matches = re.findall(r'time=([\d\.]+)\s*ms', result.stdout, re.IGNORECASE)
+        rtts = [float(r) for r in rtt_matches]
         
         if rtts:
             return {
@@ -87,15 +80,10 @@ def run_traceroute(ip: str, max_hops: int = 30, timeout: int = 1) -> str:
     Returns:
         Raw traceroute output as string
     """
-    system = platform.system().lower()
-    
     try:
-        if system == 'windows':
-            # Windows tracert command
-            cmd = ['tracert', '-h', str(max_hops), '-w', str(timeout), ip]
-        else:
-            # Unix/Linux traceroute command
-            cmd = ['traceroute', '-m', str(max_hops), '-w', str(timeout // 1000), ip]
+
+        # Unix/Linux traceroute command
+        cmd = ['traceroute', '-m', str(max_hops), '-w', str(timeout // 1000), ip]
         
         print(f"Running traceroute to {ip}...")
         result = subprocess.run(
@@ -117,119 +105,7 @@ def run_traceroute(ip: str, max_hops: int = 30, timeout: int = 1) -> str:
         return ""
 
 
-def parse_traceroute_windows(output: str, destination_ip: str) -> List[Dict[str, any]]:
-    """
-    Parse Windows tracert output.
-    
-    Windows tracert format:
-    1    <1 ms    <1 ms    <1 ms  192.168.1.1
-    2     *        *        *     Request timed out.
-    3    10 ms    11 ms    12 ms  10.0.0.1
-    
-    Args:
-        output: Raw traceroute output
-        destination_ip: Destination IP being traced
-    
-    Returns:
-        List of hop dictionaries with hop_number, hop_ip, and rtt values
-    """
-    hops = []
-    lines = output.split('\n')
-    
-    # Pattern to match tracert lines with IP addresses and RTT values
-    # Matches lines like: "  1    <1 ms    <1 ms    <1 ms  192.168.1.1"
-    # or "  3    10 ms    11 ms    12 ms  10.0.0.1 [10.0.0.1]"
-    hop_pattern = re.compile(
-        r'^\s*(\d+)\s+' +  # Hop number
-        r'(?:(<?\d+)\s*ms|[\*\?])\s+' +  # First RTT (or * for timeout)
-        r'(?:(<?\d+)\s*ms|[\*\?])\s+' +  # Second RTT
-        r'(?:(<?\d+)\s*ms|[\*\?])\s+' +  # Third RTT
-        r'(?:([^\s]+(?:\s+\[[^\]]+\])?))?',  # IP or hostname
-        re.IGNORECASE
-    )
-    
-    # Alternative pattern for timeout lines
-    timeout_pattern = re.compile(
-        r'^\s*(\d+)\s+[\*\?]\s+[\*\?]\s+[\*\?]\s+(?:Request timed out|[\*\?])',
-        re.IGNORECASE
-    )
-    
-    for line in lines:
-        # Check for timeout lines first (* * * hops)
-        timeout_match = timeout_pattern.match(line)
-        if timeout_match:
-            hop_num = int(timeout_match.group(1))
-            # Add non-responsive hop with 0ms RTT (will be filtered later)
-            hops.append({
-                'destination_ip': destination_ip,
-                'hop_number': hop_num,
-                'hop_ip': None,  # No IP for non-responsive hop
-                'min_rtt': 0.0,
-                'max_rtt': 0.0,
-                'avg_rtt': 0.0,
-                'is_responsive': False
-            })
-            continue
-        
-        # Try to match normal hop line
-        match = hop_pattern.match(line)
-        if match:
-            hop_num = int(match.group(1))
-            rtt1 = match.group(2)
-            rtt2 = match.group(3)
-            rtt3 = match.group(4)
-            hop_addr = match.group(5) if match.group(5) else None
-            
-            # Extract IP address if present
-            if hop_addr:
-                # Clean up hostname/IP (remove brackets and extra text)
-                hop_addr = hop_addr.strip()
-                # Extract IP from format like "hostname [ip]"
-                ip_match = re.search(r'\[([^\]]+)\]', hop_addr)
-                if ip_match:
-                    hop_addr = ip_match.group(1)
-                elif ' ' in hop_addr:
-                    # If there's a space, take the last part (likely IP)
-                    parts = hop_addr.split()
-                    # Try to find which part looks like an IP
-                    for part in reversed(parts):
-                        if re.match(r'\d+\.\d+\.\d+\.\d+', part):
-                            hop_addr = part
-                            break
-                
-                # Parse RTT values (filter out None and convert)
-                rtts = []
-                for rtt in [rtt1, rtt2, rtt3]:
-                    if rtt:
-                        # Handle "<1" format
-                        if rtt.startswith('<'):
-                            rtts.append(0.5)  # Use 0.5 ms for <1 ms
-                        else:
-                            try:
-                                rtts.append(float(rtt))
-                            except ValueError:
-                                pass
-                
-                # Only add hop if we have valid RTT values
-                if rtts and hop_addr:
-                    avg_rtt = sum(rtts) / len(rtts)
-                    min_rtt = min(rtts)
-                    max_rtt = max(rtts)
-                    
-                    hops.append({
-                        'destination_ip': destination_ip,
-                        'hop_number': hop_num,
-                        'hop_ip': hop_addr,
-                        'min_rtt': min_rtt,
-                        'max_rtt': max_rtt,
-                        'avg_rtt': avg_rtt,
-                        'is_responsive': True
-                    })
-    
-    return hops
-
-
-def parse_traceroute_unix(output: str, destination_ip: str) -> List[Dict[str, any]]:
+def parse_traceroute(output: str, destination_ip: str) -> List[Dict[str, any]]:
     """
     Parse Unix/Linux traceroute output.
     
@@ -307,29 +183,6 @@ def parse_traceroute_unix(output: str, destination_ip: str) -> List[Dict[str, an
                 })
     
     return hops
-
-
-def parse_traceroute_output(output: str, destination_ip: str) -> List[Dict[str, any]]:
-    """
-    Parse traceroute output based on the operating system.
-    
-    Args:
-        output: Raw traceroute output
-        destination_ip: Destination IP being traced
-    
-    Returns:
-        List of hop dictionaries
-    """
-    if not output:
-        return []
-    
-    system = platform.system().lower()
-    
-    if system == 'windows':
-        return parse_traceroute_windows(output, destination_ip)
-    else:
-        return parse_traceroute_unix(output, destination_ip)
-
 
 def select_random_ips(num_ips: int = 5) -> List[str]:
     """
@@ -426,7 +279,7 @@ def main():
         output = run_traceroute(ip)
     
         if output:
-            hops = parse_traceroute_output(output, ip)
+            hops = parse_traceroute(output, ip)
             
             if hops:
                 # Filter to only responsive hops for counting
@@ -491,4 +344,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
