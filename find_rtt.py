@@ -26,7 +26,6 @@ def run_ping(ip: str, count: int = 3) -> Optional[Dict[str, float]]:
     Returns:
         Dictionary with min_rtt, max_rtt, avg_rtt or None if ping fails
     """
-    system = platform.system().lower()
     
     try:
         cmd = ['ping', '-c', str(count), ip]
