@@ -23,7 +23,7 @@ from typing import List, Optional, Dict, Tuple
 # Import functions from existing modules
 from extract_addrs import load_servers_dataframe, extract_addrs_list
 from ping_addr import ping_all_addrs
-from find_rtt import select_random_ips, run_traceroute, parse_traceroute_output, run_ping, write_results_to_csv
+from find_rtt import select_random_ips, run_traceroute, parse_traceroute, run_ping, write_results_to_csv
 from plot_distance_rtt import plot_distance_vs_rtt
 from plot_latency_breakdown import plot_latency_breakdown
 from plot_hopcount_rtt import plot_hopcount_vs_rtt
@@ -228,7 +228,7 @@ class ExperimentRunner:
                     output = run_traceroute(ip)
                     
                     if output:
-                        hops = parse_traceroute_output(output, ip)
+                        hops = parse_traceroute(output, ip)
                         
                         if hops:
                             # Filter responsive hops
